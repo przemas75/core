@@ -28,6 +28,7 @@ use OC\Files\Filesystem;
 use OC\Files\View;
 use OCP\Files\FileInfo;
 use OCP\Files\Mount\IMountManager;
+use OCP\Files\NotFoundException;
 use OCP\IUserManager;
 use OCP\Share\IManager;
 use OCP\Share\IShare;
@@ -194,6 +195,10 @@ class TransferOwnership extends Command {
 					$progress->advance();
 					$this->allFiles[] = $fileInfo;
 					if ($fileInfo->isEncrypted()) {
+
+						if (\OC::$server->getAppConfig()->getValue('encryption', 'useMasterKey', 0) !== 0) {
+							return true;
+						}
 						$this->encryptedFiles[] = $fileInfo;
 					}
 					return true;
@@ -274,7 +279,10 @@ class TransferOwnership extends Command {
 					if ($shareMountPoint) {
 						$this->mountManager->removeMount($shareMountPoint->getMountPoint());
 					}
-					$this->shareManager->deleteShare($share);
+					try {
+						$this->shareManager->deleteShare($share);
+					} catch (\OCP\Files\NotFoundException $e) {
+					}
 				} else {
 					if ($share->getShareOwner() === $this->sourceUser) {
 						$share->setShareOwner($this->destinationUser);
